@@ -7,12 +7,15 @@ services:
     image: "ghcr.io/home-assistant/home-assistant:stable"
     env_file: ../env
     volumes:
-      - ${CONFIG_PATH}/Configs/hassio:/config
+      - ${CONFIG_PATH}/hass/Configs/hassio:/config
       - /etc/localtime:/etc/localtime:ro
     restart: unless-stopped
     privileged: true
     ports:
       - 8123:8123
+    depends_on:
+      - mariadb
+      - mosquitto
   
   mariadb:
     container_name: mariadb
@@ -24,8 +27,48 @@ services:
        MARIADB_ROOT_PASSWORD: $MARIADB_ROOT_PASSWORD
        MARIADB_USER: $MARIADB_USER
        MARIADB_PASSWORD: $MARIADB_PASSWORD
+       PUID: $PUID
+       PGID: $PGID
+       TZ: $TZ
     volumes: 
-      - ${CONFIG_PATH}/dbdata:/var/lib/mysql
+      - ${CONFIG_PATH}/mariadb/config/:/etc/mysql/conf.d
+      - ${CONFIG_PATH}/mariadb:/var/lib/mysql
     restart: unless-stopped
     ports:
-      - 3307:3306
+      - 3306:3306
+
+  mosquitto:
+    container_name: mosquitto
+    hostname: mosquitto
+    image: eclipse-mosquitto
+    env_file: ../env
+    environment:
+       PUID: $PUID
+       PGID: $PGID
+       TZ: $TZ
+    volumes:
+      - ${CONFIG_PATH}/mosquitto/config:/mosquitto/config
+      - ${CONFIG_PATH}/mosquitto/data:/mosquitto/data
+      - ${CONFIG_PATH}/mosquitto/log:/mosquitto/log
+    restart: unless-stopped
+    ports:
+      - "1883:1883/tcp"
+    stdin_open: true
+    tty: true
+
+  nodered:
+    container_name: nodered
+    hostname: nodered
+    image: nodered/node-red
+    volumes:
+      - ${CONFIG_PATH}/nodered:/data
+    depends_on:
+      - homeassistant
+      - mosquitto
+    environment:
+       PUID: $PUID
+       PGID: $PGID
+       TZ: $TZ
+    restart: unless-stopped
+    ports:
+      - "1880:1880"
