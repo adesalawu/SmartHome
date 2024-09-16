@@ -1,0 +1,31 @@
+---
+version: '3'
+services:
+  homeassistant:
+    container_name: homeassistant
+    hostname: homeassistant
+    image: "ghcr.io/home-assistant/home-assistant:stable"
+    env_file: ../env
+    volumes:
+      - ${CONFIG_PATH}/Configs/hassio:/config
+      - /etc/localtime:/etc/localtime:ro
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - 8123:8123
+  
+  mariadb:
+    container_name: mariadb
+    hostname: mariadb
+    image: mariadb:latest
+    env_file: ../env
+    environment:
+       MARIADB_DATABASE: $PROJECT_DB_NAME
+       MARIADB_ROOT_PASSWORD: $MARIADB_ROOT_PASSWORD
+       MARIADB_USER: $MARIADB_USER
+       MARIADB_PASSWORD: $MARIADB_PASSWORD
+    volumes: 
+      - ${CONFIG_PATH}/dbdata:/var/lib/mysql
+    restart: unless-stopped
+    ports:
+      - 3307:3306
