@@ -21,7 +21,8 @@ The setup integrates various technologies to achieve seamless control of home de
 3. Configure **Nginx Proxy Manager** and Traefik for SSL and dynamic proxy management.
 4. Set up **Wireguard VPN** for secure remote access.
 6. Integrate **zigbee2mqtt** for Zigbee devices and use **MariaDB** as the database backend.
-7. Configure **AirConnect** for audio streaming to AirPlay devices.
+7. 7. Configure **node-red** for flow automation on Home Assistant.
+8. Configure **AirConnect** for audio streaming to AirPlay devices.
 
 ## Contributing
 Submit issues or pull requests for new features and improvements.
