@@ -1,4 +1,4 @@
-# SmartHome# Smart Home Automation Project
+## Smart Home Automation Project
 
 ## Overview
 This project is aimed at creating a **Smart Home Automation System** to provide enhanced convenience, security, and energy management. 
