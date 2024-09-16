@@ -1,6 +1,65 @@
 ---
 version: '3'
 services:
+
+  cloudflare:
+    image: cloudflare/cloudflared
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+        - TUNNEL_TOKEN=<token>
+    networks:
+        - smarthome
+
+  NPM:
+    container_name: npm
+    hostname: npm
+    image: jc21/nginx-proxy-manager
+    environment:
+      DB_MYSQL_HOST: $NPM_DB_NAME
+      DB_MYSQL_PORT: 3306
+      DB_MYSQL_USER: $MARIADB_USER
+      DB_MYSQL_PASSWORD: $MARIADB_ROOT_PASSWORD
+      DB_MYSQL_NAME: "npm"
+      DISABLE_IPV6: 'true'
+    volumes:
+      - ${CONFIG_PATH}/npm/data:/data
+      - ${CONFIG_PATH}/npm/letsencrypt:/etc/letsencrypt
+    restart: unless-stopped
+    ports:
+      - '443:443' # Public HTTPS Port
+      - '81:81' # Admin Web Port
+    depends_on:
+      - mariadb
+
+  # wireguard:
+  #   image: lscr.io/linuxserver/wireguard:latest
+  #   container_name: wireguard
+  #   cap_add:
+  #     - NET_ADMIN
+  #     - SYS_MODULE #optional
+  #     environment:
+  #         PUID: $PUID
+  #         PGID: $PGID
+  #         TZ: $TZ
+  #     - SERVERURL=wireguard.domain.com #optional
+  #     - SERVERPORT=51820 #optional
+  #     - PEERS=1 #optional
+  #     - PEERDNS=auto #optional
+  #     - INTERNAL_SUBNET=10.13.13.0 #optional
+  #     - ALLOWEDIPS=0.0.0.0/0 #optional
+  #     - PERSISTENTKEEPALIVE_PEERS= #optional
+  #     - LOG_CONFS=true #optional
+  #   volumes:
+  #     - /path/to/wireguard/config:/config
+  #     - /lib/modules:/lib/modules #optional
+  #   ports:
+  #     - 51820:51820/udp
+  #   sysctls:
+  #     - net.ipv4.conf.all.src_valid_mark=1
+  #   restart: unless-stopped
+
+
   homeassistant:
     container_name: homeassistant
     hostname: homeassistant
@@ -23,7 +82,7 @@ services:
     image: mariadb:latest
     env_file: ../env
     environment:
-       MARIADB_DATABASE: $PROJECT_DB_NAME
+       MARIADB_DATABASE: $HASS_DB_NAME
        MARIADB_ROOT_PASSWORD: $MARIADB_ROOT_PASSWORD
        MARIADB_USER: $MARIADB_USER
        MARIADB_PASSWORD: $MARIADB_PASSWORD
@@ -62,9 +121,6 @@ services:
     image: nodered/node-red
     volumes:
       - ${CONFIG_PATH}/nodered:/data
-    depends_on:
-      - homeassistant
-      - mosquitto
     environment:
        PUID: $PUID
        PGID: $PGID
@@ -72,3 +128,6 @@ services:
     restart: unless-stopped
     ports:
       - "1880:1880"
+    depends_on:
+      - homeassistant
+      - mosquitto
