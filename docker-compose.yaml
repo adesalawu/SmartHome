@@ -142,34 +142,6 @@ services:
   #     traefik.http.services.traefik.secure.services: api@internal
   #     traefik.http.services.traefik.loadbalancer.server.port: "3579"
 
-  # wireguard:
-  #   image: lscr.io/linuxserver/wireguard:latest
-  #   hostname: wireguard
-  #   container_name: wireguard
-  #   cap_add:
-  #     - NET_ADMIN
-  #     - SYS_MODULE #optional
-  #   environment:
-  #       PUID: $PUID
-  #       PGID: $PGID
-  #       TZ: $TZ
-  #       SERVERURL: wireguard.domain.com
-  #       SERVERPORT: 51820 
-  #       PEERS: 1 
-  #       PEERDNS: auto 
-  #       INTERNAL_SUBNET: 10.13.13.0 
-  #       ALLOWEDIPS: 0.0.0.0/0 
-  #       PERSISTENTKEEPALIVE_PEERS: 
-  #       LOG_CONFS: true
-  #   volumes:
-  #     - ${CONFIG_PATH}/wireguard/config:/config
-  #     - ${CONFIG_PATH}/wireguard/lib/modules:/lib/modules
-  #   ports:
-  #     - 51820:51820/udp
-  #   sysctls:
-  #     - net.ipv4.conf.all.src_valid_mark=1
-  #   restart: unless-stopped
-
 networks:
   smarthome:
     external: true

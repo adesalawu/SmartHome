@@ -1,7 +1,6 @@
 import subprocess
 import os
 
-
 directory = os.path.dirname(os.path.abspath(__file__))
 
 smarthome_script = os.path.join(directory, 'smarthome.sh')
