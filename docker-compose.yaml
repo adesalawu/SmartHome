@@ -58,6 +58,7 @@ services:
       - 8123:8123
     networks:
       - frontend
+      - backend
     depends_on:
       - mariadb
       - mosquitto
@@ -80,7 +81,7 @@ services:
       - ${CONFIG_PATH}/mariadb:/var/lib/mysql
     restart: unless-stopped
     networks:
-      - frontend
+      - backend
     ports:
       - 3306:3306
 
@@ -98,7 +99,7 @@ services:
     ports:
       - "1880:1880"
     networks:
-      - frontend
+      - backend
     depends_on:
       - homeassistant
       - mosquitto
@@ -120,7 +121,7 @@ services:
     ports:
       - "1883:1883/tcp"
     networks:
-      - frontend
+      - backend
     stdin_open: true
     tty: true
 
@@ -134,9 +135,9 @@ services:
     volumes:
       - /etc/localtime:etc/localtime:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro      
-      - ${CONFIG_PATH}/traefik/data/traefik.yml:/traefik.yml.ro
+      - ./traefik/data/traefik.yml:/traefik.yml.ro
       - ${CONFIG_PATH}/traefik/data/acme.json:/acme.json
-      - ${CONFIG_PATH}/traefik/data/config.yml:/config.yml:ro
+      - ./traefik/data/config.yml:/config.yml:ro
     restart: unless-stopped
     networks:
       - frontend
