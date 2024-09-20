@@ -1,0 +1,48 @@
+http: 
+  routers:
+    dc1:
+      entryPoints:
+        - "https"
+      rule: "Host('localhost')"
+      middlewares:
+        - default-headers
+      tls: {}
+      services : pve1
+  services:
+    dc1:
+    loadBalancer:
+      servers:
+        - url: "https://localhost"
+      passHostHeader: true
+  
+  middlewares:
+    https-redirect:
+      redirectScheme:
+        scheme: https
+    
+    defaults-headers:
+      headers:
+        frameDeny: true
+        sslRedirect: true
+        browserXssFilter: true
+        contentTypeNosniff: true
+        forcesSTSHeader: true
+        stsIncludeSubdomains: true
+        stsPreload: true
+        stsSeconds: 15552000
+        customerFrameOptionsValue: SAMEORIGIN
+        customerRequestHeaders:
+          X-Forward-Proto: https
+    
+    defaults-whitelist:
+      ipWhiteLists:
+       sourceRange:
+       - "10.0.0.0/24"
+       - "192.168.0.0/16"
+       - "172.0.0.0/8"
+
+    secured:
+     chain:
+      middlewares:
+      - default-whitelist
+      - default-headers

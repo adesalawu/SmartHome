@@ -1,5 +1,12 @@
 ---
 version: '3'
+
+networks:
+  frontend:
+    external: true
+  backend:
+    external: true
+
 services:
   cloudflare:
     container_name: cloudflare
@@ -7,11 +14,12 @@ services:
     image: cloudflare/cloudflared
     env_file: ../.env
     restart: unless-stopped
-    command: tunnel run
+    command: tunnel --no-autoupdate run
     environment:
-        - TUNNEL_TOKEN=<token>
+      - TUNNEL_TOKEN=$TOKEN
     networks:
-        - smarthome
+      - frontend
+      - backend
 
   NPM:
     container_name: npm
@@ -19,7 +27,7 @@ services:
     image: jc21/nginx-proxy-manager
     environment:
       DB_MYSQL_HOST: $NPM_DB_NAME
-      DB_MYSQL_PORT: 3306
+      DB_MYSQL_PORT: $MARIADB_PORT
       DB_MYSQL_USER: $MARIADB_USER
       DB_MYSQL_PASSWORD: $MARIADB_ROOT_PASSWORD
       DB_MYSQL_NAME: "npm"
@@ -31,6 +39,8 @@ services:
     ports:
       - '443:443' # Public HTTPS Port
       - '81:81' # Admin Web Port
+    networks:
+      - frontend
     depends_on:
       - mariadb
 
@@ -46,6 +56,8 @@ services:
     privileged: true
     ports:
       - 8123:8123
+    networks:
+      - frontend
     depends_on:
       - mariadb
       - mosquitto
@@ -67,6 +79,8 @@ services:
       - ${CONFIG_PATH}/mariadb/config/:/etc/mysql/conf.d
       - ${CONFIG_PATH}/mariadb:/var/lib/mysql
     restart: unless-stopped
+    networks:
+      - frontend
     ports:
       - 3306:3306
 
@@ -83,6 +97,8 @@ services:
     restart: unless-stopped
     ports:
       - "1880:1880"
+    networks:
+      - frontend
     depends_on:
       - homeassistant
       - mosquitto
@@ -103,45 +119,43 @@ services:
     restart: unless-stopped
     ports:
       - "1883:1883/tcp"
+    networks:
+      - frontend
     stdin_open: true
     tty: true
 
-  # traefik:
-  #   image: traefik:latest
-  #   container_name: traefik
-  #   restart: unless-stopped
-  #   networks:
-  #     - smarthome
-  #   ports:
-  #     - 80:80
-  #     - 443:443
-  #   environment:
-  #     - CF_API_EMAIL=$CF_API_EMAIL
-  #     - CF_API_KEY=$YOUR_API_KEY
-  #   volumes:
-  #     - /etc/localtime:etc/localtime:ro
-  #     - /var/run/docker.sock:/var/run/docker.sock:ro      
-  #     - ${CONFIG_PATH}/traefik/data/traefik.yml:/traefik.yml.ro
-  #     - ${CONFIG_PATH}/traefik/data/acme.json:/acme.json
-  #     - ${CONFIG_PATH}/traefik/data/config.yml:/config.yml:ro
+  traefik:
+    image: traefik:latest
+    container_name: traefik
+    hostname: traefik
+    environment:
+      - CF_API_EMAIL=$CF_API_EMAIL
+      - CF_API_KEY=$YOUR_API_KEY
+    volumes:
+      - /etc/localtime:etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro      
+      - ${CONFIG_PATH}/traefik/data/traefik.yml:/traefik.yml.ro
+      - ${CONFIG_PATH}/traefik/data/acme.json:/acme.json
+      - ${CONFIG_PATH}/traefik/data/config.yml:/config.yml:ro
+    restart: unless-stopped
+    networks:
+      - frontend
+    ports:
+      - 80:80
+      - 443:443
+
   #   labels:
   #     traefik.enable: true
   #     traefik.http.routers.traefik-http.entrypoints: http
-  #     traefik.http.routers.traefik.rule: Host(`traefik.kanta.online`)
+  #     traefik.http.routers.traefik.rule: Host(`traefik.domain.tld`)
   #     traefik.http.middlewares.traefik-auth.basicauth.users: BASIC_AUTH_PASSWORD
   #     traefik.http.middlewares.traefik-https.redirect.redirectscheme: https
   #     traefik.http.middlewares.sslheader.headers.customrequests.X-Fordwarded-Proto: https
   #     traefik.http.routers.traefik.middlewares: traeefik-https-redirect
   #     traefik.http.routers.traefik.secure.entrypoints: https
-  #     traefik.http.routers.traefik.secure.rule: Host(`traefik.kanta.online`)
+  #     traefik.http.routers.traefik.secure.rule: Host(`traefik.domain.tld`)
   #     traefik.http.routers.traefik-secure-middlewares: traefik-auth
   #     traefik.http.routers.traefik-secure.tls: true
-  #     traefik.http.routers.traefik-secure.tls.certresolver: cloudfare
-  #     traefik.http.routers.traefik.secure.tls.domain[0].main: kanta.com.ng
-  #     traefik.http.routers.traefik.secure.tls.domain[0].sans: *.kanta.com.ng
+  #     traefik.http.routers.traefik-secure.tls.certresolver: "cloudflare"
   #     traefik.http.services.traefik.secure.services: api@internal
   #     traefik.http.services.traefik.loadbalancer.server.port: "3579"
-
-networks:
-  smarthome:
-    external: true
