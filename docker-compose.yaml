@@ -1,11 +1,11 @@
 ---
-version: '3'
+version: '3.8'
 
 networks:
   frontend:
     external: true
   backend:
-    external: true
+
 
 services:
   cloudflare:
@@ -16,31 +16,68 @@ services:
     restart: unless-stopped
     command: tunnel --no-autoupdate run
     environment:
-      - TUNNEL_TOKEN=$TOKEN
+      - TUNNEL_TOKEN=$TUNNEL_TOKEN
     networks:
       - frontend
-      - backend
+
+
+  traefik:
+    image: traefik:latest
+    container_name: traefik
+    hostname: traefik
+    environment:
+      - CF_API_EMAIL=$CF_API_EMAIL
+      - CF_API_KEY=$YOUR_API_KEY
+    volumes:
+      - /etc/localtime:etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro      
+      - ./traefik/data/traefik.yml:/traefik.yml.ro
+      - ${CONFIG_PATH}/traefik/data/acme.json:/acme.json
+      - ./traefik/data/config.yml:/config.yml:ro
+    restart: unless-stopped
+    networks:
+      - frontend
+    ports:
+      - 80:80
+      - 443:443
+
+    labels:
+      traefik.enable: true
+      traefik.http.routers.traefik-http.entrypoints: http
+      traefik.http.routers.traefik.rule: Host(`traefik.domain.tld`)
+      traefik.http.middlewares.traefik-auth.basicauth.users: BASIC_AUTH_PASSWORD
+      traefik.http.middlewares.traefik-https.redirect.redirectscheme: https
+      traefik.http.middlewares.sslheader.headers.customrequests.X-Fordwarded-Proto: https
+      traefik.http.routers.traefik.middlewares: traeefik-https-redirect
+      traefik.http.routers.traefik.secure.entrypoints: https
+      traefik.http.routers.traefik.secure.rule: Host(`traefik.domain.tld`)
+      traefik.http.routers.traefik-secure-middlewares: traefik-auth
+      traefik.http.routers.traefik-secure.tls: true
+      traefik.http.routers.traefik-secure.tls.certresolver: "cloudflare"
+      traefik.http.services.traefik.secure.services: api@internal
+      traefik.http.services.traefik.loadbalancer.server.port: "3579"
 
   NPM:
     container_name: npm
     hostname: npm
     image: jc21/nginx-proxy-manager
     environment:
-      DB_MYSQL_HOST: $NPM_DB_NAME
+      DB_MYSQL_HOST: mariadb
       DB_MYSQL_PORT: $MARIADB_PORT
       DB_MYSQL_USER: $MARIADB_USER
       DB_MYSQL_PASSWORD: $MARIADB_ROOT_PASSWORD
-      DB_MYSQL_NAME: "npm"
+      DB_MYSQL_NAME: ${MARIADB_DATABASE}
       DISABLE_IPV6: 'true'
     volumes:
       - ${CONFIG_PATH}/npm/data:/data
       - ${CONFIG_PATH}/npm/letsencrypt:/etc/letsencrypt
     restart: unless-stopped
     ports:
-      - '443:443' # Public HTTPS Port
-      - '81:81' # Admin Web Port
+      - '443:443' 
+      - '81:81' 
     networks:
       - frontend
+      - backend
     depends_on:
       - mariadb
 
@@ -62,28 +99,23 @@ services:
     depends_on:
       - mariadb
       - mosquitto
-  
+
   mariadb:
-    container_name: mariadb
-    hostname: mariadb
     image: mariadb:latest
-    env_file: ../.env
-    environment:
-       MARIADB_DATABASE: $MARIADB_DB_NAME
-       MARIADB_ROOT_PASSWORD: $MARIADB_ROOT_PASSWORD
-       MARIADB_USER: $MARIADB_USER
-       MARIADB_PASSWORD: $MARIADB_PASSWORD
-       PUID: $PUID
-       PGID: $PGID
-       TZ: $TZ
-    volumes: 
-      - ${CONFIG_PATH}/mariadb/config/:/etc/mysql/conf.d
-      - ${CONFIG_PATH}/mariadb:/var/lib/mysql
+    hostname: mariadb
+    container_name: mariadb
     restart: unless-stopped
+    ports:
+      - 3307:3306
+    environment:
+       MARIADB_DATABASE: ${WORDPRESS_DB_NAME}
+       MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+       MARIADB_USER: ${MARIADB_USER}
+       MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+    volumes: 
+      - ${CONFIG_PATH}/dbdata:/var/lib/mysql
     networks:
       - backend
-    ports:
-      - 3306:3306
 
   nodered:
     container_name: nodered
@@ -124,39 +156,3 @@ services:
       - backend
     stdin_open: true
     tty: true
-
-  traefik:
-    image: traefik:latest
-    container_name: traefik
-    hostname: traefik
-    environment:
-      - CF_API_EMAIL=$CF_API_EMAIL
-      - CF_API_KEY=$YOUR_API_KEY
-    volumes:
-      - /etc/localtime:etc/localtime:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro      
-      - ./traefik/data/traefik.yml:/traefik.yml.ro
-      - ${CONFIG_PATH}/traefik/data/acme.json:/acme.json
-      - ./traefik/data/config.yml:/config.yml:ro
-    restart: unless-stopped
-    networks:
-      - frontend
-    ports:
-      - 80:80
-      - 443:443
-
-  #   labels:
-  #     traefik.enable: true
-  #     traefik.http.routers.traefik-http.entrypoints: http
-  #     traefik.http.routers.traefik.rule: Host(`traefik.domain.tld`)
-  #     traefik.http.middlewares.traefik-auth.basicauth.users: BASIC_AUTH_PASSWORD
-  #     traefik.http.middlewares.traefik-https.redirect.redirectscheme: https
-  #     traefik.http.middlewares.sslheader.headers.customrequests.X-Fordwarded-Proto: https
-  #     traefik.http.routers.traefik.middlewares: traeefik-https-redirect
-  #     traefik.http.routers.traefik.secure.entrypoints: https
-  #     traefik.http.routers.traefik.secure.rule: Host(`traefik.domain.tld`)
-  #     traefik.http.routers.traefik-secure-middlewares: traefik-auth
-  #     traefik.http.routers.traefik-secure.tls: true
-  #     traefik.http.routers.traefik-secure.tls.certresolver: "cloudflare"
-  #     traefik.http.services.traefik.secure.services: api@internal
-  #     traefik.http.services.traefik.loadbalancer.server.port: "3579"
